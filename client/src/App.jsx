@@ -9,11 +9,21 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState("all");
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchTasks = async () => {
-    const res = await fetch(API);
-    const data = await res.json();
-    setTasks(data);
+    try {
+      const res = await fetch(API);
+      const data = await res.json();
+      setTasks(data);
+    } catch {
+      showToast("Failed to load tasks. Is the server running?", "error");
+    }
   };
 
   useEffect(() => {
@@ -21,27 +31,45 @@ function App() {
   }, []);
 
   const addTask = async (task) => {
-    await fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(task),
-    });
-    fetchTasks();
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(task),
+      });
+      if (!res.ok) throw new Error();
+      showToast("Task added");
+      fetchTasks();
+    } catch {
+      showToast("Failed to add task", "error");
+    }
   };
 
   const updateTask = async (id, updates) => {
-    await fetch(`${API}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-    setEditingTask(null);
-    fetchTasks();
+    try {
+      const res = await fetch(`${API}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error();
+      setEditingTask(null);
+      showToast("Task updated");
+      fetchTasks();
+    } catch {
+      showToast("Failed to update task", "error");
+    }
   };
 
   const deleteTask = async (id) => {
-    await fetch(`${API}/${id}`, { method: "DELETE" });
-    fetchTasks();
+    try {
+      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      showToast("Task deleted");
+      fetchTasks();
+    } catch {
+      showToast("Failed to delete task", "error");
+    }
   };
 
   const filteredTasks =
@@ -50,6 +78,8 @@ function App() {
   return (
     <div className="app">
       <h1>Task Manager</h1>
+
+      {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
 
       <TaskForm
         onSubmit={
